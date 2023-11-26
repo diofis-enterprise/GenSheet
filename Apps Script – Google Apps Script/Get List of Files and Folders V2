@@ -1,0 +1,57 @@
+function getListFilesandFolders() {
+  var folderId = SpreadsheetApp.getUi().prompt('Enter folder ID').getResponseText();
+  if (folderId === "") {
+    SpreadsheetApp.getUi().alert('Folder ID is invalid');
+    return;
+  }
+  makeListFilesAndFolders(folderId, true); 
+}
+
+function makeListFilesAndFolders(folderId, listAll) {
+  const sh = SpreadsheetApp.getActiveSheet();
+  const range = sh.getRange('A2:I'); // Updated range to include the new column
+  range.clear();
+  sh.appendRow(["parent", "folder", "name", "date created", "date updated", "owner", "URL", "ID", "file size"]);
+
+  try {
+    var parentFolder = DriveApp.getFolderById(folderId);
+    listFiles(parentFolder, parentFolder.getName());
+    listSubFolders(parentFolder, parentFolder.getName());
+  } catch (e) {
+    Logger.log(e.toString());
+    SpreadsheetApp.getUi().alert('An error occurred: ' + e.toString());
+  }
+}
+
+function listSubFolders(parentFolder, parent) {
+  var childFolders = parentFolder.getFolders();
+  while (childFolders.hasNext()) {
+    var childFolder = childFolders.next();
+    Logger.log("Fold : " + childFolder.getName());
+    listFiles(childFolder, parent);
+    listSubFolders(childFolder, parent + "|" + childFolder.getName());
+    Utilities.sleep(1000); // Add a pause to avoid execution time limits
+  }
+}
+
+function listFiles(fold, parent) {
+  var sh = SpreadsheetApp.getActiveSheet();
+  var data = [];
+  var files = fold.getFiles();
+  while (files.hasNext()) {
+    var file = files.next();
+    data = [ 
+      parent,
+      fold.getName(),
+      file.getName(),
+      file.getDateCreated(),
+      file.getLastUpdated(),
+      file.getOwner().getEmail(),
+      file.getUrl(),       
+      file.getId(),
+      file.getSize(), // Include file size
+    ];
+    sh.appendRow(data);
+    Utilities.sleep(1000); // Add a pause to avoid execution time limits
+  }
+}
